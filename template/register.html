@@ -1,0 +1,18 @@
+{% extends "template/base.html" %}
+
+{% block content %}
+    <h2>Register</h2>
+    <form action="/register" id="register" method="post" style="width: 25%;">
+        <div class="form-group">
+            <label class="control-label" for="register">Username</label>
+            <input class="form-control" id="username" name="username" type="text">
+        </div>
+
+        <div class="form-group">
+            <label class="control-label" for="register">Password</label>
+            <input class="form-control" id="password" name="password" type="password">
+        </div>
+
+        <input type="submit" value="Submit" class="btn btn-primary">
+    </form>
+{% endblock %}
