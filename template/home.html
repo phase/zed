@@ -2,4 +2,15 @@
 
 {% block content %}
     <p>This is the home page.</p>
+    <!-- start posts -->
+    {% for post in posts %}
+        <div class="post" id="{{ loop.index }}">
+            <h4 style="margin-bottom: 0px;">
+                <a class="upvote" href="#">&#9652;</a>
+                <a href="{{ post.link }}">{{ post.name }}</a>
+            </h4>
+            <p><small>{{ post.points }} points by {{ post.user }}</small></p>
+        </div>
+    {% endfor %}
+    <!-- end posts -->
 {% endblock %}

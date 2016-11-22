@@ -2,3 +2,23 @@ body {
     background-color: #111;
     color: whitesmoke;
 }
+
+a,
+a:link,
+a:visited,
+a:hover,
+a:active {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.upvote,
+.upvote:link,
+.upvote:visited {
+    color: whitesmoke;
+}
+
+.upvote:hover,
+.upvote:active {
+    color: lightgrey;
+}

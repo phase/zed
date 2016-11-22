@@ -19,9 +19,10 @@ class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
 
         router.route("/static/:file").handler { r ->
             val file = File("static/" + r.request().getParam("file"))
-            if (!file.exists())
-                throw Exception("File '${file.name}' not found in static/")
-            r.response().end(file.readLines().joinToString("\n"))
+            if (file.exists())
+                r.response().end(file.readLines().joinToString("\n"))
+            else
+                r.response().end()
         }
 
         router.route().failureHandler { r ->
@@ -35,7 +36,12 @@ class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
 
         router.route("/").handler { r ->
             val writer = StringWriter()
-            templateManager.home.evaluate(writer)
+            val content: MutableMap<String, Any> = mutableMapOf(
+                    "posts" to listOf(
+                            Post("some stupid hacker news clone", "https://github.com/phase/zed", "phase"),
+                            Post("GitHub.com - Best site for open source software", "https://github.com", "phase")
+                    ))
+            templateManager.home.evaluate(writer, content)
             r.response().end(writer.toString())
         }
 
