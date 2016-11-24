@@ -106,17 +106,17 @@ class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
             client.getConnection { r ->
                 assert(r.succeeded(), { r.cause() })
                 val c = r.result()
-                c.execute("""INSERT INTO `users` (`name`, `password`)
-                        VALUES (\"USERNAME\", \"PASSWORD\")"""
-                        .replace("USERNAME", username)
-                        .replace("PASSWORD", password), { r ->
+                c.execute("""insert into users (name, password)
+                        values ("#U", "#P")"""
+                        .replace("#U", username)
+                        .replace("#P", hashed), { r ->
                     assert(r.succeeded(), { r.cause() })
                     c.query("select id from users order by id desc limit 1", { r ->
                         assert(r.succeeded(), { r.cause() })
                         val result = r.result()
                         val id = result.results[result.numRows - 1].getInteger(result.results.size - 1)
                         println("New User: $id: $username ($hashed)")
-                        users.add(User(id, username, password))
+                        users.add(User(id, username, hashed))
                     })
                 })
 
