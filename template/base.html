@@ -8,7 +8,13 @@
     </head>
 
     <body class="container">
-        <h3>zed <small>the link site you never asked for</small></h3>
+        <br>
+        <table width="100%">
+            <tr>
+                <td><p>zed <small>the link site you never asked for</small></p></td>
+                <td><p style="text-align:right;">{% if user.id == -1 %}<a href="/login">Login</a> | <a href="/register">Register</a>{% else %}{{ user.name }} | <a href="/logout">Logout</a>{% endif %}</p></td>
+            </tr>
+        </table>
         <hr>
         <div id="content" class="container">
             {% block content %}

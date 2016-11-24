@@ -7,6 +7,9 @@ import io.vertx.ext.asyncsql.AsyncSQLClient
 import io.vertx.ext.asyncsql.MySQLClient
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.ext.web.handler.CookieHandler
+import io.vertx.ext.web.handler.SessionHandler
+import io.vertx.ext.web.sstore.LocalSessionStore
 import java.io.File
 import java.io.StringWriter
 
@@ -16,8 +19,6 @@ fun main(args: Array<String>) {
 }
 
 class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
-
-    var users: MutableList<User> = mutableListOf()
 
     fun createSQLConnection(): AsyncSQLClient {
         val config = File("config.json")
@@ -64,6 +65,14 @@ class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
 
         // Used for forms
         router.route().handler(BodyHandler.create())
+        // Used for sessions
+        router.route().handler(CookieHandler.create())
+
+        val store = LocalSessionStore.create(vertx)
+        val sessionHandler = SessionHandler.create(store)
+
+        // Make sure all requests are routed through the session handler too
+        router.route().handler(sessionHandler)
 
         router.route("/static/:file").handler { r ->
             val file = File("static/" + r.request().getParam("file"))
@@ -83,8 +92,10 @@ class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
         }
 
         router.route("/").handler { r ->
+            val user: User = run { val u = userCaches[r.session().get("zed_session_token")]; u ?: NULL_USER }
             val writer = StringWriter()
             val content: MutableMap<String, Any> = mutableMapOf(
+                    "user" to user,
                     "posts" to listOf(
                             Post("some stupid hacker news clone", "https://github.com/phase/zed", User(0, "phase", "null")),
                             Post("GitHub.com - Best site for open source software", "https://github.com", User(0, "phase", "null"))
@@ -94,14 +105,24 @@ class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
         }
 
         router.get("/register/").handler { r ->
+            val user: User = run { val u = userCaches[r.session().get("zed_session_token")]; u ?: NULL_USER }
             val writer = StringWriter()
-            templateManager.register.evaluate(writer)
+            val content: MutableMap<String, Any> = mutableMapOf("user" to user, "page" to "Register", "page_url" to "register")
+            templateManager.login.evaluate(writer, content)
             r.response().end(writer.toString())
         }
 
-        router.post("/register/").handler { r ->
-            val username = r.request().getParam("username")
-            val password = r.request().getParam("password")
+        router.get("/login/").handler { r ->
+            val user: User = run { val u = userCaches[r.session().get("zed_session_token")]; u ?: NULL_USER }
+            val writer = StringWriter()
+            val content: MutableMap<String, Any> = mutableMapOf("user" to user, "page" to "Login", "page_url" to "login")
+            templateManager.login.evaluate(writer, content)
+            r.response().end(writer.toString())
+        }
+
+        router.post("/register/").handler { routingContext ->
+            val username = routingContext.request().getParam("username")
+            val password = routingContext.request().getParam("password")
             val hashed = SCryptUtil.scrypt(password, 16384, 8, 1)
             client.getConnection { r ->
                 assert(r.succeeded(), { r.cause() })
@@ -115,13 +136,37 @@ class Zed(val templateManager: TemplateManager) : AbstractVerticle() {
                         assert(r.succeeded(), { r.cause() })
                         val result = r.result()
                         val id = result.results[result.numRows - 1].getInteger(result.results.size - 1)
-                        println("New User: $id: $username ($hashed)")
-                        users.add(User(id, username, hashed))
+                        println("New User #$id: $username ($hashed)")
+                        val user = User(id, username, hashed)
+                        val sessionToken = user.cache()
+                        routingContext.session().put("zed_session_token", sessionToken)
                     })
                 })
 
             }
-            r.reroute("/")
+            routingContext.reroute("/")
+        }
+
+        router.post("/login/").handler { routingContext ->
+            val username = routingContext.request().getParam("username")
+            val password = routingContext.request().getParam("password")
+            client.getConnection { r ->
+                assert(r.succeeded(), { r.cause() })
+                val c = r.result()
+                c.query("select id, password from users where name = \"$username\"") { r ->
+                    assert(r.succeeded(), { r.cause() })
+                    val id = r.result().results[0].getLong(0).toInt()
+                    val hashed = r.result().results[0].getString(1)
+                    if (SCryptUtil.check(password, password)) {
+                        val user = User(id, username, hashed)
+                        val sessionToken = user.cache()
+                        routingContext.session().put("zed_session_token", sessionToken)
+                    } else {
+                        // fuck, wrong password
+                    }
+                }
+            }
+            routingContext.reroute("/")
         }
 
         return router

@@ -1,8 +1,8 @@
 {% extends "template/base.html" %}
 
 {% block content %}
-    <h2>Register</h2>
-    <form action="/register" id="register" method="post" style="width: 25%;">
+    <h2>{{ page }}</h2>
+    <form action="/{{ page_url }}" id="register" method="post" style="width: 25%;">
         <div class="form-group">
             <label class="control-label" for="register">Username</label>
             <input class="form-control" id="username" name="username" type="text">
